@@ -1,3 +1,5 @@
+[en](./REAME.md) | [ko](./README(ko).md) | [ja](./README(ja).md)
+
 ## Blue-Green Deployment Script for Low-Resource Environments
 
 This script provides a reliable **Blue-Green Deployment** strategy optimized for servers with limited CPU/RAM resources (e.g., Raspberry Pi, small Cloud VMs).
