@@ -1,4 +1,4 @@
-[en](./README.md)
+[en](./REAME.md) | [ko](./README(ko).md) | [ja](./README(ja).md)
 
 ## 저자원 환경을 위한 블루‑그린 배포 스크립트
 
