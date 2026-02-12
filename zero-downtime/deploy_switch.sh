@@ -44,8 +44,16 @@ usage() {
 }
 
 dc() {
-  # Docker Compose wrapper with project isolation (-p)
-  docker compose -f "$COMPOSE_FILE" "$@"
+  local project="$1"; shift
+
+  local color port
+  case "$project" in
+    blue-app)  color="blue";  port="$PORT_BLUE"  ;;
+    green-app) color="green"; port="$PORT_GREEN" ;;
+    *) err "Unknown project: $project"; return 2 ;;
+  esac
+
+  COLOR="$color" PORT="$port" docker compose -f "$COMPOSE_FILE" -p "$project" "$@"
 }
 
 health_check() {
@@ -54,7 +62,7 @@ health_check() {
 
   log "Health checking: ${url}"
   for i in $(seq 1 "$HEALTH_RETRY"); do
-    if curl -fsSIL --max-time "$HEALTH_TIMEOUT" "$url" >/dev/null 2>&1; then
+    if curl -fsSIL --max-time "$HEALTH_TIMEOUT" -H "your-allowed-domain" "$url" >/dev/null 2>&1; then
       ok "Health check passed (port=${port})"
       return 0
     fi
@@ -101,7 +109,7 @@ log "Stopping background services (Celery) in the current ${OTHER} environment..
 
 # 1) Stop Celery in the 'OTHER' environment to free up CPU resources
 set +e
-dc -p "${OTHER}-app" stop "$SVC_WORKER" "$SVC_BEAT" >/dev/null 2>&1
+dc "${OTHER}-app" stop "$SVC_WORKER" "$SVC_BEAT" >/dev/null 2>&1
 STOP_RC=$?
 set -e
 
@@ -113,7 +121,7 @@ fi
 
 # 2) Spin up Web for the TARGET environment
 log "Starting ${TARGET} environment: ${SVC_WEB}..."
-dc -p "${TARGET}-app" up -d "$SVC_WEB"
+dc "${TARGET}-app" up -d "$SVC_WEB"
 ok "${TARGET} environment: web startup requested"
 
 # 3) Wait for initialization
@@ -124,7 +132,7 @@ sleep "$WAIT_SECONDS"
 if ! health_check "$PORT_TARGET"; then
   err "Deployment aborted: ${TARGET} web is not responding."
   log "Recovering ${OTHER} background services..."
-  dc -p "${OTHER}-app" up -d "$SVC_WORKER" "$SVC_BEAT" || warn "Recovery failed (Manual check required)"
+  dc "${OTHER}-app" up -d "$SVC_WORKER" "$SVC_BEAT" || warn "Recovery failed (Manual check required)"
   err "Check logs: docker compose -f \"$COMPOSE_FILE\" -p ${TARGET}-app logs -n 200 ${SVC_WEB}"
   exit 1
 fi
@@ -142,7 +150,7 @@ fi
 
 # 6) Start Celery for the TARGET environment
 log "Starting background services for ${TARGET} environment..."
-dc -p "${TARGET}-app" up -d "$SVC_WORKER" "$SVC_BEAT"
+dc "${TARGET}-app" up -d "$SVC_WORKER" "$SVC_BEAT"
 ok "Deployment Successful 🎉 (Active: ${TARGET})"
 
 # Final Instruction for Manual Cleanup
